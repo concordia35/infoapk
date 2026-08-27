@@ -1,0 +1,6 @@
+01-billede4_samtale.png
+02-billede1_bygning.png
+
+# Skriv ét filnavn pr. linje.
+# Eksempel: nyt-billede.jpg
+# Linjer der starter med # ignoreres.

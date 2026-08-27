@@ -1,0 +1,19 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'dk.oddfellow.slagelse.infotavle'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "dk.oddfellow.slagelse.infotavle"
+        minSdk 21
+        targetSdk 28
+        versionCode 1
+        versionName "1.0"
+    }
+}
+
+dependencies {
+}
