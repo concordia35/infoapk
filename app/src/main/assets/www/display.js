@@ -1,45 +1,82 @@
-const fallbackImages = [];
+const bundledImages = ["./slideshow/01.png", "./slideshow/02.png"];
+const REMOTE_MANIFEST = "https://concordia35.github.io/infoapk/slideshow/billeder.json";
+const REMOTE_BASE = "https://concordia35.github.io/infoapk/slideshow/";
+const DB_NAME = "OddFellowImages";
+const DB_STORE = "images";
 
-const captions = [
-  "Fællesskab begynder med et møde",
-  "Mennesker mødes bedst ansigt til ansigt",
-  "Et fællesskab midt i Slagelse",
-  "Tid til samtaler, samvær og nye perspektiver"
-];
+function openImageDb(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,1);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+    };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
 
-const stories = [
-  {
-    label:"NYSGERRIG?",
-    title:"Har du tænkt<br>over, hvad der<br>foregår i en loge?",
-    text:"Nysgerrig? Så spørg os.<br>Vi fortæller gerne om Odd Fellow og livet i logen.",
-    factTitle:"Venskab · Kærlighed · Udvikling",
-    factText:"Ord får først værdi, når de bliver brugt i virkeligheden."
-  },
-  {
-    label:"TRE LOGER · ÉT FÆLLESSKAB",
-    title:"Odd Fellow<br>i Slagelse.",
-    text:"Sct. Gertrud, Concordia og Hellig Anders har alle hjemme i Frederiksgade 15.",
-    factTitle:"Forskellige loger. Samme hus.",
-    factText:"Scan QR-koden og find den loge, du vil vide mere om."
-  },
-  {
-    label:"ANSIGT TIL ANSIGT",
-    title:"Der skal være<br>plads til rigtige<br>samtaler.",
-    text:"Et fast holdepunkt i hverdagen med fællesskab, refleksion og samvær.",
-    factTitle:"Du behøver ikke kende nogen.",
-    factText:"Nysgerrighed er et ganske fint sted at begynde."
-  }
-];
+async function dbPut(key,value){
+  const db=await openImageDb();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(DB_STORE,"readwrite");
+    tx.objectStore(DB_STORE).put(value,key);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  });
+}
 
-const myths = [
-  ["“Odd Fellow er kun for ældre.”","Nej. Fællesskabet er for voksne i forskellige aldre, og nye medlemmer er velkomne."],
-  ["“Det er en hemmelig orden.”","Nej. Vi fortæller gerne, hvem vi er, og hvad vi står for. Enkelte traditioner hører til i logen."],
-  ["“Man skal kende nogen for at komme ind.”","Nej. Du kan sagtens selv tage kontakt, hvis du er nysgerrig på fællesskabet."],
-  ["“Det handler om religion.”","Odd Fellow bygger på etiske værdier og menneskeligt fællesskab – ikke på en bestemt religion."],
-  ["“Det er bare højtidelige møder.”","Nej. Traditioner er en del af det, men samvær, samtaler og fællesskab fylder mindst lige så meget."]
-];
+async function dbGetAll(){
+  const db=await openImageDb();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(DB_STORE,"readonly");
+    const store=tx.objectStore(DB_STORE);
+    const keysReq=store.getAllKeys();
+    const valsReq=store.getAll();
+    tx.oncomplete=()=>{
+      const pairs=keysReq.result.map((k,i)=>[k,valsReq.result[i]]);
+      pairs.sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+      resolve(pairs.map(p=>p[1]));
+    };
+    tx.onerror=()=>reject(tx.error);
+  });
+}
 
-async function loadImages(){ return ["./slideshow/01.png", "./slideshow/02.png"]; }
+function blobToDataUrl(blob){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(r.result);
+    r.onerror=()=>reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+
+async function syncRemoteImages(){
+  if(!navigator.onLine) return;
+  try{
+    const r=await fetch(REMOTE_MANIFEST+"?ts="+Date.now(),{cache:"no-store"});
+    if(!r.ok) return;
+    const names=await r.json();
+    for(const name of names){
+      try{
+        const ir=await fetch(REMOTE_BASE+encodeURIComponent(name),{cache:"no-store"});
+        if(!ir.ok) continue;
+        const data=await blobToDataUrl(await ir.blob());
+        await dbPut(name,data);
+      }catch(e){}
+    }
+    localStorage.setItem("remoteImageList",JSON.stringify(names));
+  }catch(e){}
+}
+
+async function loadImages(){
+  try{
+    const cached=await dbGetAll();
+    if(cached.length) return cached;
+  }catch(e){}
+  return bundledImages;
+}
+const fallbackImages = bundledImages;
 
 const photo=document.querySelector(".photo");
 const img=document.getElementById("slideImage");
@@ -114,3 +151,8 @@ window.addEventListener("load", () => {
 });
 
 
+
+window.addEventListener("load", async ()=>{
+  await syncRemoteImages();
+});
+setInterval(syncRemoteImages, 10 * 60 * 1000);

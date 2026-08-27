@@ -5,9 +5,17 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import org.json.JSONArray;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -34,11 +42,46 @@ public class MainActivity extends Activity {
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
 
+        webView.addJavascriptInterface(new LocalImagesBridge(), "AndroidImages");
         webView.setWebViewClient(new WebViewClient());
         webView.setBackgroundColor(0xFF171310);
         webView.loadUrl("file:///android_asset/www/index.html");
 
         hideSystemUI();
+    }
+
+    public class LocalImagesBridge {
+        @JavascriptInterface
+        public String listDownloadedImages() {
+            try {
+                File dir = new File(getFilesDir(), "slideshow");
+                if (!dir.exists()) return "[]";
+                File[] files = dir.listFiles();
+                if (files == null) return "[]";
+
+                List<String> names = new ArrayList<>();
+                for (File f : files) {
+                    if (f.isFile()) {
+                        String n = f.getName().toLowerCase();
+                        if (n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png")
+                                || n.endsWith(".webp") || n.endsWith(".gif") || n.endsWith(".avif")) {
+                            names.add("file://" + f.getAbsolutePath());
+                        }
+                    }
+                }
+                Collections.sort(names);
+                return new JSONArray(names).toString();
+            } catch (Exception e) {
+                return "[]";
+            }
+        }
+
+        @JavascriptInterface
+        public String getDownloadDir() {
+            File dir = new File(getFilesDir(), "slideshow");
+            if (!dir.exists()) dir.mkdirs();
+            return dir.getAbsolutePath();
+        }
     }
 
     private void hideSystemUI() {
@@ -73,6 +116,6 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        // Kiosk behaviour: ignore Back so the screen stays on the infotavle.
+        // Kiosk mode
     }
 }

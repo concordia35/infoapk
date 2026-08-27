@@ -1,29 +1,43 @@
-ODD FELLOW INFOTAVLE – ANDROID APK PROJECT
+ODD FELLOW INFOTAVLE – ANDROID V2
 
-Dette er en rigtig native Android-wrapper omkring infotavlen.
+NYT I V2
+1. Automatisk APK-versionering
+   - GitHub Actions bruger github.run_number som versionCode.
+   - versionName bliver fx 1.0.12.
+   - Nye APK'er kan derfor installeres oven på gamle uden versionskonflikt.
 
-Funktion:
-- Kører helt offline efter installation
-- Ingen Chrome/PWA nødvendig
-- Tvinger landscape
-- Immersive fullscreen/kiosk-visning
-- Holder skærmen vågen
-- Hele infotavlen og de aktuelle billeder ligger inde i appen
+2. Billeder kan opdateres UDEN ny APK
+   - Appen har altid sine indbyggede billeder som fallback.
+   - Når enheden har internet, henter den:
+     https://concordia35.github.io/infoapk/slideshow/billeder.json
+   - Nye billeder downloades og gemmes lokalt i appens IndexedDB.
+   - Når enheden bagefter er offline, bruges de gemte billeder.
 
-HY300:
-minSdk = Android 5.0 (API 21), så den bør passe til langt de fleste HY300 Android-varianter.
+3. GitHub opdaterer automatisk billeder.json
+   - Upload kun billeder til repositoryets rodmappe:
+     slideshow/
+   - GitHub Action genererer billeder.json automatisk.
 
-BYG APK VIA GITHUB ACTIONS:
-1. Upload hele projektet til et GitHub repository.
-2. Åbn fanen Actions.
-3. Workflowet "Build Android APK" kører automatisk ved push til main.
-4. Åbn workflow-run.
-5. Download artifact "OddFellow-Infotavle-APK".
-6. Pak ZIP-artifact ud; app-debug.apk kan sideloades på HY300.
+ANBEFALET ARBEJDSGANG FOR NYE BILLEDER
+1. Upload nyt billede til:
+   slideshow/
+2. Vent ca. 1 minut på GitHub Action.
+3. Tænd Wi-Fi på HY300.
+4. Åbn infotavlen og lad den stå 10-20 sekunder.
+5. Slå Wi-Fi fra igen.
+6. De nye billeder bør nu fortsætte offline.
 
-NYE BILLEDER:
-Billederne er bundlet i APK'en. Læg nye billeder i:
-app/src/main/assets/www/slideshow/
+VIGTIGT
+Remote URL er sat til:
+https://concordia35.github.io/infoapk/slideshow/
 
-Derefter skal APK'en bygges igen.
-Denne model er valgt, fordi den er væsentligt mere driftssikker på billig Android-projektorhardware end browser/PWA/offline-cache.
+Det forudsætter at repository'et / GitHub Pages-adressen er:
+concordia35/infoapk
+
+Hvis GitHub Pages bruger en anden sti, skal REMOTE_MANIFEST og REMOTE_BASE i:
+app/src/main/assets/www/display.js
+ændres.
+
+APK BUILD
+GitHub Actions -> Build Android APK.
+Artifact-navnet inkluderer nu buildnummeret.
